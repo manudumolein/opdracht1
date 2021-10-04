@@ -1,14 +1,14 @@
+#include <mysql.h>
 #include "PJ_RPI.h"
 #include <stdio.h>
-#include <mysql.h>
 #include <stdlib.h>
 
-void controlStateChange(int, char);
+void controlStateChange(int);
 void makeDatabase(void);
-void updateDatabase(int, int);
+void updateDatabase(int);
 
+//globale var
 char state[27] = {0};
-time_t curtime;
 
 int main()
 {
@@ -20,16 +20,16 @@ int main()
 
 	makeDatabase();
 
-	// Define gpio 17 as output
+//BCM 17,27,22 instellen als input
 	INP_GPIO(17);
 	INP_GPIO(27);
 	INP_GPIO(22);
 
 	while (1)
 	{
-		controlStateChange(17, state[17]);
-		controlStateChange(27, state[27]);
-		controlStateChange(22, state[22]);
+		controlStateChange(17);
+		controlStateChange(27);
+		controlStateChange(22);
 	}
 
 	return 0;
@@ -74,21 +74,21 @@ void makeDatabase(void)
 	return;
 }
 
-void controlStateChange(int port, char statetemp)
+void controlStateChange(int port)
 {
 	long input = GPIO_READ(port);
 
-	if (input >> port ^ statetemp)
+	if (input >> port ^ state[port])
 	{		
-		state[port] = !statetemp;
+		state[port] = !state[port];
 		printf("port: %i state: %i\n",port,state[port]);
 
-		updateDatabase(port,statetemp);
+		updateDatabase(port);
 		sleep(1); //tegen jitter
 	}
 }
 
-void updateDatabase(int port, int state)
+void updateDatabase(int port)
 {
 	MYSQL *con = mysql_init(NULL);
 
@@ -106,7 +106,7 @@ void updateDatabase(int port, int state)
 	}
 
 	char buffer[500];
-	snprintf(buffer, sizeof(buffer), "insert into portInfo(GPIO_port,state) values( %i,%i)", port, state);
+	snprintf(buffer, sizeof(buffer), "insert into portInfo(GPIO_port,state) values( %i,%i)", port, state[port]);
 
 
 	if (mysql_query(con, buffer))
